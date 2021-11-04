@@ -25,6 +25,7 @@
   <body>
     <div class="reveal">
       <div class="slides">
+
         <section id="intro">
           <h2>
             👨‍🍳<br />Как готовить production с webpack 5 module federation?
@@ -132,7 +133,7 @@
         <section>
           <h2>Проблема</h2>
           <div style="display: flex">
-            <div style="flex: 1">
+            <div style="flex: 1; display: flex; flex-direction: column;">
               <p class="fragment" style="text-align: left"><b>О проекте</b></p>
               <ul>
                 <li class="fragment">Одна сфера</li>
@@ -140,7 +141,7 @@
                 <li class="fragment">Много сайтов</li>
               </ul>
             </div>
-            <div style="flex: 1">
+            <div style="flex: 1; display: flex; flex-direction: column;">
               <p class="fragment" style="text-align: left"><b>Следует</b></p>
               <ul>
                 <li class="fragment">Сложная навигация</li>
@@ -196,6 +197,7 @@
             <li class="fragment">Независимо тестируем</li>
           </ul>
         </section>
+
         <section>
           <h2>Монорепозиторий</h2>
           <ul>
@@ -208,6 +210,24 @@
           </ul>
         </section>
 
+        <section>
+          <section>
+            <h2>Выберем технологию</h2>
+            <ul>
+              <li class="fragment">SSI</li>
+              <li class="fragment">Iframe</li>
+              <li class="fragment">Realms</li>
+              <li class="fragment">Shadow DOM</li>
+              <li class="fragment">Single-SPA</li>
+              <li class="fragment">Webpack 5</li>
+            </ul>
+          </section>
+
+          <section data-background-image="./images/hard-choice.jpeg"></section>
+          <section data-background-image="./images/pavel-chertorogov.png" data-background-size="contain"></section>
+          <section data-background-image="./images/alexey-gusev.png"data-background-size="contain"></section>
+        </section>
+
         <section data-background-image="./images/lets-code-it.png"></section>
         <section data-background-image="./images/demo.png"></section>
 
@@ -217,7 +237,7 @@
             <p>Объявляем remote</p>
 
             <pre>
-              <code data-trim data-noescape>
+              <code data-trim data-noescape data-line-numbers="1-8|1,8|2|3|4|5-7">
                 new ModuleFederationPlugin({
                   name: "watch",
                   filename: "remoteEntry.js",
@@ -233,7 +253,7 @@
           <section>
             <p>Показываем откуда раздаем статику</p>
             <pre>
-              <code class="hljs" data-trim data-noescape>
+              <code class="hljs" data-trim data-noescape data-line-numbers="1-5|4">
                 output: {
                   path: path.resolve(process.cwd(), "dist"),
                   filename: "[name].[contenthash].js",
@@ -241,6 +261,10 @@
                 }
               </code>
             </pre>
+
+            <aside class="notes">
+              <p>Marketplace делаем по аналогии</p>
+            </aside>
           </section>
         </section>
 
@@ -249,11 +273,9 @@
             <h2>AppHost</h2>
             <p>Объявляем хост</p>
             <pre>
-              <code class="hljs" data-trim data-noescape>
+              <code class="hljs" data-trim data-noescape data-line-numbers="1-6|2|3-5">
                 new ModuleFederationPlugin({
                   name: "app_host",
-                  filename: "remoteEntry.js",
-                  library: { type: "var", name: "app_host" },
                   remotes: {
                     watch: "watch",
                   }
@@ -315,8 +337,6 @@
                 }),
                 new ModuleFederationPlugin({
                   name: "app_host",
-                  filename: "remoteEntry.js",
-                  library: { type: "var", name: "app_host" },
                   remotes: {
                     watch: "watch",
                   }
@@ -331,14 +351,16 @@
               <code class="hljs" data-trim data-noescape>
                 new ModuleFederationPlugin({
                   name: "app_host",
-                  filename: "remoteEntry.js",
-                  library: { type: "var", name: "app_host" },
                   remotes: {
                     watch: "watch@http://localhost:3003/remoteEntry.js",
                   }
                 })
               </code>
             </pre>
+            <aside class="notes">
+              <p>Запомнили, есть два способа</p>
+              <p>Потом к ним вернемся</p>
+            </aside>
           </section>
 
           <section>
@@ -385,6 +407,32 @@
           <section data-background-image="./images/fb-news-mf-2.png"></section>
 
           <section>
+            <p>app-host/webpack.config.ts</p>
+            <pre>
+              <code data-trim data-noescape>
+                new HtmlWebpackTagsPlugin({
+                  tags: ["http://localhost:3003/remoteEntry.js", ...],
+                  // нужно, чтобы скрипты загрузились до app_host
+                  append: false,
+                  publicPath: false,
+                }),
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Какой способ использовать?</p>
+            <ul>
+              <li><strike>Сам добавлю скрипты</strike></li>
+              <li>Module federation добавляет скрипты</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Ошибки</h2>
+          </section>
+
+          <section>
             <h2>Не загрузился микрофронтенд?</h2>
             <pre><code data-trim data-noescape>
                 react-dom.production.min.js:216 Error: Container missing
@@ -407,6 +455,34 @@
           </section>
 
           <section>
+            <pre>
+              <code data-trim data-noescape>
+                optimization: {
+                  splitChunks: {
+                    cacheGroups: {
+                      react: {
+                        test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+                        name: "react",
+                        chunks: "all",
+                      },
+                      commons: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name: "vendors",
+                        chunks: "all",
+                        priority: -20,
+                      },
+                    },
+                  },
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Где еще могут быть ошибки?</h2>
+          </section>
+
+          <section>
             <div class="fragment">
               <p>watch/webpack.config.ts</p>
               <pre>
@@ -422,7 +498,8 @@
 
             <div class="fragment">
               <p>app-host/webpack.config.ts</p>
-              <pre><code class="javascript" data-trim data-line-numbers="1-10|6-8">
+              <pre>
+                <code class="javascript" data-trim data-line-numbers="1-10|6-8">
                   plugins: [
                     new ModuleFederationPlugin({
                       name: "app_host",
@@ -433,27 +510,23 @@
                       }
                     })
                   ]
-                </code></pre>
+                </code>
+              </pre>
             </div>
           </section>
 
           <section>
-            <pre><code data-trim data-noescape>
-                new HtmlWebpackTagsPlugin({
-                  tags: ["http://localhost:3003/remoteEntry.js", ...],
-                  // нужно, чтобы скрипты загрузились до app_host
-                  append: false,
-                  publicPath: false,
-                }),
-              </code></pre>
-          </section>
-
-          <section>
-            <p>Какой способ использовать?</p>
-            <ul>
-              <li><strike>Сам добавлю скрипты</strike></li>
-              <li>Module federation добавляет скрипты</li>
-            </ul>
+            <p>Наименование в remotes</p>
+            <pre>
+              <code class="javascript" data-trim data-line-numbers="1-6|2|3-5">
+                remotes: {
+                  "mf-app": "mf-app@http://localhost:3003/remoteEntry.js",
+                  "mf-app": "mf_app@http://localhost:3003/remoteEntry.js",
+                  "mf_app": "mf_app@http://localhost:3003/remoteEntry.js",
+                  "mfApp": "mfApp@@http://localhost:3003/remoteEntry.js"
+                }
+              </code>
+            </pre>
           </section>
         </section>
 
@@ -479,13 +552,24 @@
           </section>
 
           <section>
+            <p>watch/webpack.config.ts</p>
+            <pre>
+              <code class="hljs" data-trim data-noescape>
+                output: {
+                  path: path.resolve(process.cwd(), "dist"),
+                  filename: "[name].[contenthash].js",
+                  publicPath: "http://localhost:3002/",
+                },
+              </code>
+            </pre>
+          </section>
+
+          <section>
             <p>app-host/webpack.config.ts</p>
             <pre>
               <code class="hljs" data-trim data-noescape>
                 new ModuleFederationPlugin({
                   name: "app_host",
-                  filename: "remoteEntry.js",
-                  library: { type: "var", name: "app_host" },
                   remotes: {
                     watch: "watch@http://localhost:3003/remoteEntry.js",
                   }
@@ -543,7 +627,8 @@
 
           <section>
             <p>Используем обертку</p>
-            <pre><code class="jsx" data-trim data-noescape data-line-numbers="1-14|1|4-7|9-13">
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-14|1|4-7|9-13">
                 const WatchPage = preloadLazy(() =&gt; import('watch/page'))
 
                 const App = () =&gt; {
@@ -552,19 +637,29 @@
                     WatchPage.preload().then(() =&gt; setAnimate(true))
                   }, [])
 
-                  return animate &amp; (
-                    &lt;Animation in={animate}&gt;
-                      &lt;WatchPage /&gt;
-                    &lt;/Animation&gt;
+                  return (
+                    &lt;Suspense fallback="..."&gt;
+                      &lt;Animation in={animate}&gt;
+                        &lt;WatchPage /&gt;
+                      &lt;/Animation&gt;
+                    &lt;/Suspense&gt;
                   )
                 }
-              </code></pre>
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Анимируем переходы между страницами</h2>
+            <ul>
+              <li class="fragment">Находим компонент</li>
+              <li class="fragment">Микрофронт => подгружаем</li>
+              <li class="fragment">Микрофронт => Suspense</li>
+              <li class="fragment">Скачался => анимируем</li>
+              <li class="fragment">Навигация => сбрасываем состояние</li>
+            </ul>
           </section>
         </section>
-
-        <!-- <section>
-          <h2>Анимируем переходы между страницами</h2>
-        </section> -->
 
         <section>
           <section><h2>Я не хочу скачивать react дважды</h2></section>
@@ -585,26 +680,614 @@
         </section>
 
         <section>
-          <section><h2>Я не хочу создавать httpProvider дважды</h2></section>
+          <section><h2>Хочу пошарить context</h2></section>
+
+          <section>
+            <p>Создаем контекст shared/contexts/index.ts</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape>
+                import { createContext, useContext } from 'react'
+
+                export const UserContext = createContext({ id: '', name: '' })
+                export const useUser = () =&gt; useContext(UserContext)
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Добавляем в app-host/webpack.config.ts</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape>
+                shared: {
+                  '@contexts': {
+                    singleton: true,
+                    import: path.resolve('./shared/contexts')
+                  }
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Добавляем React дерево</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape>
+                import { UserContext } from '@contexts'
+                ...
+                &lt;UserContext.Provider value={{ id: '1234', name: 'Viktor' }}&gt;
+                  &lt;WatchPage /&gt;
+                &lt;/UserContext.Provider&gt;
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Используем в микрофронтенде</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape>
+                import { useUser } from '@contexts'
+
+                export const WatchPage = () =&gt; {
+                  const user = useUser()
+                  return &lt;div&gt;{user.name}&lt;/div&gt;
+                }
+              </code>
+            </pre>
+          </section>
         </section>
 
         <section>
-
+          <h2>Деплоим</h2>
         </section>
 
-        <!-- <section>
-          <h2>Деплой</h2>
-        </section>
         <section>
-          <h2>Анализ</h2>
+          <h2>Как обычно деплоят?</h2>
+          <aside class="notes">
+            <p>Собрали статику</p>
+            <p>Залили на сервер</p>
+            <p>Можно докинуть CI/CD</p>
+          </aside>
         </section>
+
+        <section>
+          <h2>Что еще нужно учитывать?</h2>
+          <ul>
+            <li class="fragment">Какая у вас инфраструктура?</li>
+            <li class="fragment">Нужна ли доступность везде?</li>
+            <li class="fragment">Большая ли нагрузка?</li>
+          </ul>
+          <aside class="notes">
+            <p>Потом расскажу зачем нам эти вопросы</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Как деплоим мы?</h2>
+          <div>
+            <div style="display: grid; grid-template-columns: 1fr 100px 1fr">
+              <span class="fragment">Доступность везде?</span>
+              <span class="fragment">=></span>
+              <span class="fragment">CDN нам не нужен</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 100px 1fr">
+              <span class="fragment">Где храним статику?</span>
+              <span class="fragment">=></span>
+              <span class="fragment">Облачное хранилище</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 100px 1fr">
+              <span class="fragment">CI/CD</span>
+              <span class="fragment">=></span>
+              <span class="fragment">Docker</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 100px 1fr">
+              <span class="fragment">Webpack dev server</span>
+              <span class="fragment">=></span>
+              <span class="fragment">Nginx</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 100px 1fr">
+              <span class="fragment">Оркестрация</span>
+              <span class="fragment">=></span>
+              <span class="fragment">Kubernetes</span>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Облачное хранилище</h2>
+        </section>
+
+        <section>
+          <h2>Nginx</h2>
+        </section>
+
+        <section>
+          <h2>Docker</h2>
+        </section>
+
+        <section>
+          <h2>Kubernetes</h2>
+        </section>
+
+        <section>
+          <section>
+            <h2>Инфраструктура</h2>
+            <p class="fragment">У нас свой cloud storage</p>
+            <p class="fragment">А у вас?</p>
+            <aside class="notes">
+              <p>Доступ к файлам через pre-sign url</p>
+            </aside>
+          </section>
+  
+          <section>
+            <h2>Как заливаем файлы?</h2>
+            <ul>
+              <li class="fragment">Заливаем только нужные бандлы</li>
+              <li class="fragment">Файлы сохраняются application/octet-stream</li>
+              <li class="fragment">Нет multiple upload</li>
+            </ul>
+            <aside class="notes">
+              <p>При деплое через git диффаем (лерна не умеет, могу рассказать потом почему)</p>
+              <p>Сами устанавливаем mime-type при заливке</p>
+              <p>Concurrency для ускорения заливки бандлов 4</p>
+            </aside>
+          </section>
+
+          <section>
+            <h2>Как храним файлы?</h2>
+          </section>
+
+          <section>
+            <h2>Без версий</h2>
+            <pre>
+              <code class="jsx" data-trim data-noescape>
+                /bucket
+                ├── app-host
+                │   ├── 888.330d58fad93b1eb0dfa5.js
+                │   ├── app.d4c4be8e2eb88907410a.js
+                │   ├── index.html
+                │   └── react.39acefad56af0f11d471.js
+                └── watch
+                    ├── 888.3b49de53a0194486d9db.js
+                    ├── 938.85ead56334c64eec9261.js
+                    ├── app.c47cc95c56185a4b15b4.js
+                    ├── index.html
+                    ├── react.0ee026e74f05c2e958a1.js
+                    └── remoteEntry.js
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>С версиями</h2>
+            <pre>
+              <code class="jsx" data-trim data-noescape>
+                /bucket
+                ├── app-host
+                │   ├── 2.0.0
+                │   │   ├── index.html
+                │   │   ├── 888.3b49de53a0194486d9db.js
+                │   └── 2.0.1
+                │       ├── index.html
+                │       ├── 938.85ead56334c64eec9261.js
+                └── watch
+                    ├── 2.0.0
+                    │   ├── index.html
+                    │   ├── 938.85ead56334c64eec9261.js
+                    └── 2.0.1
+                        ├── index.html
+                        ├── 938.85ead56334c64eec9261.js
+                        └── remoteEntry.js
+              </code>
+            </pre>
+            <aside class="notes">
+              <p>Потом понадобится при кэшировании</p>
+            </aside>
+          </section>
+        </section>
+
+        <section>
+          <h2>Свой CDN</h2>
+          <p class="fragment">С pre-sign url</p>
+        </section>
+
+        <section>
+          <section>
+            <h2>Custom Nginx</h2>
+            <ul>
+              <li class="fragment">ngx_devel_kit</li>
+              <li class="fragment">set-misc</li>
+              <li class="fragment">lua-nginx-module</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>А как их добавить?</h2>
+            <ul>
+              <li class="fragment highlight-red">Собрать из исходников</li>
+              <li class="fragment highlight-green">Скачать из dockerhub</li>
+            </ul>
+          </section>
+
+          <section>
+            <p>https://hub.docker.com/r/openresty/openresty/</p>
+          </section>
+
+          <section>
+            <h2>Как должно работать?</h2>
+            <ul>
+              <li class="fragment">API</li>
+              <li class="fragment">Bundles</li>
+              <li class="fragment">Routing</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Как выглядит nginx.conf?</h2>
+          </section>
+
+          <section>
+            <p>API</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-7|2|4-6">
+                server {
+                  listen 3001;
+                  ...
+                  location = /graphql {
+                    proxy_pass 'http://${BACKEND_URL}:8000/grahpql';
+                  }
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Bundles</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-15|2,9,13|4-6">
+                server {
+                  listen 3001;
+                  ...
+                  location / {
+                    try_url $uri @proxy;
+                  }
+                }
+                server {
+                  listen 3002;
+                  ...
+                }
+                server {
+                  listen 3003;
+                  ...
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Bundles</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-15|1,15|2-6|8-12|14">
+                location @proxy {
+                  set $bucket ${BUCKET};
+                  set $key $1;
+                  set $signature '';
+                  set $access_key ${ACCESS_KEY};
+                  set $secret_key ${SECRET_KEY};
+
+                  set_by_lua 'return ngx.cookie_time(ngx.time())';
+                  set $string_to_sign
+                    '$request_method\n\n\n\nx-amz-date:$now\n/$bucket/$key';
+                  set_hmac_sha1 $signature $secret_key $string_to_sign;
+                  set_encode_base64 $access_key $signature;
+
+                  error_page 404 = @index_proxy;
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Routing</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-12|1,12|3">
+                location @index_proxy {
+                  set $bucket ${BUCKET};
+                  set $key 'app-host/index.html';
+                  set $signature '';
+                  set $access_key ${ACCESS_KEY};
+                  set $secret_key ${SECRET_KEY};
+
+                  set_by_lua 'return ngx.cookie_time(ngx.time())';
+                  set $string_to_sign
+                    '$request_method\n\n\n\nx-amz-date:$now\n/$bucket/$key';
+                  set_hmac_sha1 $signature $secret_key $string_to_sign;
+                  set_encode_base64 $access_key $signature;
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>А как обстоят дела с env переменными?</h2>
+          </section>
+
+          <section>
+            <p>На входе nginx.conf.template</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-7|5">
+                server {
+                  listen 3001;
+                  ...
+                  location = /graphql {
+                    proxy_pass 'http://${BACKEND_URL}:8000/grahpql';
+                  }
+                }
+              </code>
+            </pre>
+            <div class="fragment">
+              <pre>
+                <code class="jsx" data-trim data-noescape>
+                  envsubtr '${BACKEND_URL}' &lt; nginx.conf.template \
+                    &gt; /etc/nginx/conf.d/default.conf
+                </code>
+              </pre>
+            </div>
+          </section>
+
+          <section>
+            <h2>И тут врывается Kubernetes</h2>
+          </section>
+
+          <section>
+            <p>На выходе /etc/nginx/conf.d/default.conf</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-7|5">
+                server {
+                  listen 3001;
+                  ...
+                  location = /graphql {
+                    proxy_pass 'http://backend-app:8000/grahpql';
+                  }
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Хардкодим ip...</h2>
+          </section>
+
+          <section>
+            <p>На выходе /etc/nginx/conf.d/default.conf</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-7|5">
+                server {
+                  listen 3001;
+                  ...
+                  location = /graphql {
+                    proxy_pass 'http://158.134.171.13:8000/grahpql';
+                  }
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Снова врывается инфраструктура</h2>
+          </section>
+
+          <section>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-15|2,9,13">
+                server {
+                  listen 3001;
+                  ...
+                  location / {
+                    try_url $uri @proxy;
+                  }
+                }
+                server {
+                  listen 3002;
+                  ...
+                }
+                server {
+                  listen 3003;
+                  ...
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Новый nginx.conf.template</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-7|4-6">
+                server {
+                  listen 3001;
+                  ...
+                  location ~ ^/bundles/(.*) {
+                    try_url $uri @proxy;
+                  }
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>watch/webpack.config.prod.ts</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-5|4">
+                output: {
+                  path: path.resolve(process.cwd(), "dist"),
+                  filename: "[name].[contenthash].js",
+                  publicPath: "http://your-domain.com/bundles/watch"
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>app-host/webpack.config.prod.ts</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-4|2-3">
+                remotes: {
+                  watch:
+                    "watch@https://domain.com/bundles/watch/remoteEntry.js"
+                }
+              </code>
+            </pre>
+          </section>
+        </section>
+
+        <section>
+          <h2>Бонус</h2>
+        </section>
+
+        <section>
+          <section>
+            <h2>Версионирование</h2>
+          </section>
+
+          <section>
+            <pre>
+              <code class="jsx" data-trim data-noescape>
+                /bucket
+                ├── app-host
+                │   ├── 2.0.0
+                │   │   ├── index.html
+                │   │   ├── 888.3b49de53a0194486d9db.js
+                │   └── 2.0.1
+                │       ├── index.html
+                │       ├── 938.85ead56334c64eec9261.js
+                └── watch
+                    ├── 2.0.0
+                    │   ├── index.html
+                    │   ├── 938.85ead56334c64eec9261.js
+                    └── 2.0.1
+                        ├── index.html
+                        ├── 938.85ead56334c64eec9261.js
+                        └── remoteEntry.js
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-15|3|4-13">
+                remotes: {
+                  watch: `promise new Promise(resolve => {
+                    ...
+                    resolve({
+                      get: (request) => window.watch.get(request),
+                      init: (arg) => {
+                        try {
+                          return window.watch.init(arg)
+                        } catch(e) {
+                          console.log('remote container already initialized')
+                        }
+                      }
+                    })
+                  })
+                },
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <p>Вместо ... могло быть</p>
+            <pre>
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-12|1|2-8,10-11|9">
+                fetch('http://version-api.com?mf=watch')
+                  .then(watchVersion => {
+                    const url = "http://some-host.com/bundles/"
+                      + watchVersion + "/remoteEntry.js";
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.defer = true;
+                    script.onload = () => {
+                      resolve(...)
+                    }
+                    document.head.appendChild(script);
+                  });
+              </code>
+            </pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>А еще CI/CD</h2>
+          </section>
+
+          <section>
+            <img class="r-stretch" src="./images/different-story.jpeg">
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Разбор полетов</h2>
+          </section>
+
+          <section>
+            <h2>Как проходит запрос?</h2>
+          </section>
+
+          <section>
+            <h2>Как деплоится?</h2>
+          </section>
+
+          <section>
+            <h2>Как фронт понимает, что что-то обновилось?</h2>
+          </section>
+
+          <section>
+            <h2>Как кэшировать?</h2>
+          </section>
+        </section>
+
         <section>
           <h2>Выводы</h2>
+          <ul>
+            <li class="fragment">Быстрая и независимая разработка/деплой</li>
+            <li class="fragment">Снизились ресурсы на разработку UI</li>
+            <li class="fragment">Просто держать единый стиль интерфейса</li>
+            <li class="fragment">В микрофронтендах ещё много неизведанного</li>
+            <li class="fragment">Усложнилась архитектура</li>
+            <li class="fragment">Всегда закладывайте время на неопределённости</li>
+          </ul>
         </section>
-        <section>
-          <h2>Вопросы</h2>
-        </section> -->
 
+        <section>
+          <div style="align-items: center; display: flex">
+            <div style="flex: 1">
+              <div
+                class="avatar"
+                style="
+                  background: url(./images/me.jpg) no-repeat;
+                  background-size: cover;
+                  border-radius: 50%;
+                  height: 300px;
+                  margin: 0 auto;
+                  overflow: hidden;
+                  width: 300px;
+                "
+              ></div>
+              <p class="name" style="font-size: 28px">Вадим Малютин</p>
+              <p class="telegram" style="font-size: 28px">
+                телеграм: t.me/mfpjke
+              </p>
+              <p class="email" style="font-size: 28px">
+                почта: mltn.dev@yandex.ru
+              </p>
+              <p class="site" style="font-size: 28px">сайт: mltn.dev</p>
+            </div>
+
+            <div style="flex: 1;">
+              <h2>Q&A</h2>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
 
