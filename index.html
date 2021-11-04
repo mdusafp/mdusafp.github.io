@@ -628,7 +628,7 @@
           <section>
             <p>Используем обертку</p>
             <pre>
-              <code class="jsx" data-trim data-noescape data-line-numbers="1-14|1|4-7|9-13">
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-15|1|4-7|9-14">
                 const WatchPage = preloadLazy(() =&gt; import('watch/page'))
 
                 const App = () =&gt; {
@@ -744,7 +744,7 @@
           <h2>Как обычно деплоят?</h2>
           <aside class="notes">
             <p>Собрали статику</p>
-            <p>Залили на сервер</p>
+            <p>Залили на сервер либо в облако</p>
             <p>Можно докинуть CI/CD</p>
           </aside>
         </section>
@@ -757,6 +757,7 @@
             <li class="fragment">Большая ли нагрузка?</li>
           </ul>
           <aside class="notes">
+            <p>Запомнили вопросы</p>
             <p>Потом расскажу зачем нам эти вопросы</p>
           </aside>
         </section>
@@ -813,9 +814,6 @@
             <h2>Инфраструктура</h2>
             <p class="fragment">У нас свой cloud storage</p>
             <p class="fragment">А у вас?</p>
-            <aside class="notes">
-              <p>Доступ к файлам через pre-sign url</p>
-            </aside>
           </section>
   
           <section>
@@ -883,6 +881,13 @@
               <p>Потом понадобится при кэшировании</p>
             </aside>
           </section>
+        </section>
+
+        <section>
+          <h2>Не умеем в public bucket</h2>
+          <aside class="notes">
+            <p>Доступ к файлам через pre-sign url</p>
+          </aside>
         </section>
 
         <section>
@@ -989,7 +994,7 @@
           <section>
             <p>Routing</p>
             <pre>
-              <code class="jsx" data-trim data-noescape data-line-numbers="1-12|1,12|3">
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-13|1,13|3">
                 location @index_proxy {
                   set $bucket ${BUCKET};
                   set $key 'app-host/index.html';
@@ -1173,7 +1178,7 @@
 
           <section>
             <pre>
-              <code class="jsx" data-trim data-noescape data-line-numbers="1-15|3|4-13">
+              <code class="jsx" data-trim data-noescape data-line-numbers="1-15|4-13|3">
                 remotes: {
                   watch: `promise new Promise(resolve => {
                     ...
@@ -1199,7 +1204,7 @@
               <code class="jsx" data-trim data-noescape data-line-numbers="1-12|1|2-8,10-11|9">
                 fetch('http://version-api.com?mf=watch')
                   .then(watchVersion => {
-                    const url = "http://some-host.com/bundles/"
+                    const url = "http://domain.com/bundles/"
                       + watchVersion + "/remoteEntry.js";
                     const script = document.createElement('script');
                     script.src = url;
